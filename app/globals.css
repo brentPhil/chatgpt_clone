@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer {
+  .chatRow {
+    @apply flex px-3 items-center gap-3 h-[50px] rounded-md hover:bg-gray-500/10 transition-colors duration-200 text-white cursor-pointer text-sm flex-shrink-0;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px !important;
+  height: 6px !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #4b5563 !important;
+  border-radius: 3px !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #545e6d !important;
+}
