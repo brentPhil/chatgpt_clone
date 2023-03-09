@@ -1,13 +1,21 @@
 "use client"
+
 import { db } from "@/firebase"
 import { ArrowPathIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline"
-import { addDoc, collection, serverTimestamp } from "firebase/firestore"
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+  orderBy,
+  query,
+} from "firebase/firestore"
 import { useSession } from "next-auth/react"
 import { FormEvent, useEffect, useState } from "react"
 import { toast } from "react-hot-toast"
 import useSWR from "swr"
 import { useRouter } from "next/navigation"
 import ModelSelection from "./ModelSelection"
+import { useCollection } from "react-firebase-hooks/firestore"
 
 type Props = {
   chatId: string
@@ -16,23 +24,39 @@ export default function ChatInput({ chatId }: Props) {
   const [prompt, setPrompt] = useState("")
   const router = useRouter()
   const { data: session } = useSession()
+  const [messages] = useCollection(
+    chatId !== ""
+      ? session &&
+          query(
+            collection(
+              db,
+              "users",
+              session?.user?.email!,
+              "chats",
+              chatId,
+              "messages"
+            ),
+            orderBy("createdAt", "asc")
+          )
+      : null
+  )
 
   const { data: model } = useSWR("model", {
     fallbackData: "text-davinci-003",
   })
 
+  const handleInput = (event: Event) => {
+    const textarea = event.target as HTMLTextAreaElement
+    textarea.style.height = "24px"
+    textarea.style.height = `${textarea.scrollHeight}px`
+  }
+
   useEffect(() => {
     const textarea = document.querySelector("textarea")
-    textarea!.addEventListener("input", () => {
-      textarea!.style.height = "24px"
-      textarea!.style.height = `${textarea!.scrollHeight}px`
-    })
+    textarea!.addEventListener("input", handleInput)
 
     return () => {
-      textarea!.removeEventListener("input", () => {
-        textarea!.style.height = "24px"
-        textarea!.style.height = `${textarea!.scrollHeight}px`
-      })
+      textarea!.removeEventListener("input", handleInput)
     }
   }, [])
 
@@ -87,6 +111,12 @@ export default function ChatInput({ chatId }: Props) {
       message
     )
 
+    const messageTexts = messages?.docs.map((doc) => doc.data().text).join("\n")
+    const concat =
+      "Your name: B3 nards, You are a chatgpt clone made by: AgetroGraphic a junior front-end dev\nPrevious messages: " +
+      messageTexts +
+      "\nUser input: " +
+      input
     const notification = toast.loading("ChatGPT is thinking...")
 
     await fetch("/api/askQuestion", {
@@ -95,7 +125,7 @@ export default function ChatInput({ chatId }: Props) {
         "Content-type": "application/json",
       },
       body: JSON.stringify({
-        prompt: input,
+        prompt: concat,
         chatId,
         model,
         session,
@@ -106,9 +136,7 @@ export default function ChatInput({ chatId }: Props) {
   }
 
   const onEnterPress = (e: any) => {
-    if (e.keyCode == 13 && e.shiftKey == false) {
-      sendMessage(e)
-    }
+    e.keyCode == 13 && e.shiftKey == false && sendMessage(e)
   }
 
   return (
